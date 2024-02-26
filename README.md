@@ -1,9 +1,11 @@
 # login\_ykhmac
 OpenBSD authentication type using YubiKey HMAC-SHA1 challenge-response mode
 # Login Class options
-* x-ykhmac-state\_dir: string
+* x-ykhmac-state\_dir: string, optional
+
   Global state directory.
-* x-ykhmac-standalone: boolean
+* x-ykhmac-standalone: boolean, optional
+
   Standalone or combined mode. It's a capability boolean, shouldn't have any values specified (i.e. the option's presence turns standalone mode on).
 # Setup
 ## Prerequisites
