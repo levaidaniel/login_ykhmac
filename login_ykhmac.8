@@ -31,7 +31,10 @@
 .Sh DESCRIPTION
 The
 .Nm
-utility (if configured) is called by
+utility
+.Po if configured
+.Pc
+is called by
 .Xr login 1 ,
 .Xr su 1 ,
 and others to authenticate the
@@ -109,13 +112,17 @@ in the user's home directory.
 This boolean turns on standalone mode.
 When in standalone mode
 .Nm
-uses the login type independently (i.e. ignores existing passwords in the
+uses the login type independently
+.Po i.e. ignores existing passwords in the
 .Ql passwd
-file), and using the user-supplied password during authentication as the
+file
+.Pc ,
+and using the user-supplied password during authentication as the
 YubiKey challenge.
-When working in combined mode (i.e. without
+When working in combined mode
+.Po i.e. without
 .Ql x-ykhmac-standalone
-),
+.Pc ,
 .Nm
 will check and re-use the user's existing local password hash from the
 .Ql passwd
@@ -136,13 +143,20 @@ $ echo 1 > /var/db/login_ykhmac/user/12345678
 Then appending the expected YubiKey response as the second line into the same
 state file:
 .Bl -tag -offset ||| -width |
-.It Standalone mode - use the login type independently (i.e. ignoring existing passwords in the `passwd` file)
+.It Standalone mode - use the login type independently
+.Po i.e. ignoring existing passwords in the `passwd` file
+.Pc
 .Bd -literal
 $ mkdir ~/.login_ykhmac
 $ echo -n 'myPassword' |/bin/sha256 |/usr/local/bin/ykchalresp -2 -i- |tr -d '\n' |/bin/sha512 >> /home/user/.login_ykhmac/12345678
 .Ed
-.It Combined with the existing local password (i.e. re-using the existing password in the `passwd` file)
-As root (to access master.passwd), encode the user's hashed password:
+.It Combined with the existing local password
+.Po i.e. re-using the existing password in the `passwd` file
+.Pc
+As root
+.Po to access master.passwd
+.Pc ,
+encode the user's hashed password:
 .Bd -literal
 # echo -n $(awk 'BEGIN {FS=":"} /^testuser:/ {print $2}' /etc/master.passwd) |/bin/sha256 |/usr/local/bin/ykchalresp -2 -i- |tr -d '\n' |/bin/sha512 >> /home/user/.login_ykhmac/12345678
 .Ed
@@ -157,9 +171,11 @@ ykhmac:\e
 	:tc=default:
 .Ed
 .Pp
-In this case the state file(s) (named after the YubiKey serial number(s)) must
-be in the specified state directory, under sub directories for each username,
-e.g.:
+In this case the state file(s)
+.Po named after the YubiKey serial number(s)
+.Pc
+must be in the specified state directory, under sub directories for each
+username, e.g.:
 .Ql /var/db/login_ykhmac/user/12345678
 .Bd -literal
 ykhmac:\e
@@ -168,10 +184,12 @@ ykhmac:\e
 	:tc=default:
 .Ed
 .Pp
-In this case per-user state directories are used (e.g
+In this case per-user state directories are used
+.Po e.g
 .Ql /home/user/.login_ykhmac/12345678
-) because there's no state directory override, and standalone mode is turned
-on, which means
+.Pc
+because there's no state directory override, and standalone mode is turned on,
+which means
 .Nm
 won't use the user's password hash from the
 .Ql passwd
@@ -191,7 +209,37 @@ was written by
 Source, information, bugs:
 https://github.com/levaidaniel/login_ykhmac
 .Sh CAVEATS
-When in combined mode (e.g. using the local password hash of the user), the
-state file needs to be updated after a password change (e.g. with
+When in combined mode
+.Po e.g. using the local password hash of the user
+.Pc ,
+the state file needs to be updated after a password change
+.Po e.g. with
 .Xr passwd 1
-).
+.Pc .
+.Pp
+When not in standalone mode,
+.Nm
+gets the user's password hash using
+.Xr getpwnam_shadow 3
+from the
+.Ql passwd
+file.
+This assumes that the program invoking this library function has an effective
+UID of 0.
+While this works when e.g. logging in on the console or using
+.Xr doas 1 ,
+this doesn't necessarily work when using e.g. an X11 screen locker.
+In this case, either you use
+.Nm
+in standalone mode or give the screen locker binary the setuid bit, which isn't
+particularly secure.
+.Pp
+Logging in remotely
+.Po e.g. SSH
+.Pc
+can not work because this method requires the
+presence of the physical YubiKey during authentication.
+Consequently, when using such access, make sure to use an authentication method
+that doesn't use this type
+.Po e.g. private keys
+.Pc .
