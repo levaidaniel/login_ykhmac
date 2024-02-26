@@ -17,7 +17,7 @@
 .\"ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 .\"(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 .\"SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-.Dd $Mdocdate: February 24 2024 $
+.Dd $Mdocdate: February 26 2024 $
 .Dt LOGIN_YKHMAC 8
 .Os
 .Sh NAME
@@ -72,8 +72,10 @@ argument is accepted for consistency with the other login scripts but
 is not used.
 .Pp
 .Nm
-uses state files containing the slot number, challenge and response variables.
-A state file corresponds to a specific YubiKey.
+uses state files containing two lines: the YubiKey slot number and the expected
+encoded and hashed response for a challenge.
+A state file - named after its serial number - corresponds to a specific
+YubiKey.
 State files are searched either under the
 .Ql .login_ykhmac
 directory in the user's home directory, or can be collected in a global
@@ -87,18 +89,63 @@ State files are named after the YubiKey's 8-digit serial number, e.g.:
 .Pp
 The
 .Nm
-utility uses only the following
+utility has the following
 .Em optional
 .Xr login.conf 5
-variable:
+variables:
 .Bl -tag -offset ||| -width |
 .It Cm x-ykhmac-state_dir
-Specifies the directory for a global collection of username directories
-containing state files.
+This string variable specifies the directory of a global collection of
+directories containing state files.
+Each sub directory should be named after a username and in turn contain the
+state files named after the corresponding YubiKey serial numbers.
+For convenience, make sure the state files are writable as the user, so they
+can update their passwords without assistance.
 If you omit this variable, then the default path will be used for searching for
 state files, which is
 .Ql .login_ykhmac
 in the user's home directory.
+.It Cm x-ykhmac-standalone
+This boolean turns on standalone mode.
+When in standalone mode
+.Nm
+uses the login type independently (i.e. ignores existing passwords in the
+.Ql passwd
+file), and using the user-supplied password during authentication as the
+YubiKey challenge.
+When working in combined mode (i.e. without
+.Ql x-ykhmac-standalone
+),
+.Nm
+will check and re-use the user's existing local password hash from the
+.Ql passwd
+file as the YubiKey challenge, thus complementing a local password check with
+this YubiKey challenge-response mode.
+.El
+.Pp
+Setting up a state file is as easy as writing the slot number as the first
+line, e.g.:
+.Bd -literal
+$ echo 2 > ~/.login_ykhmac/12345678
+.Ed
+or
+.Bd -literal
+$ echo 1 > /var/db/login_ykhmac/user/12345678
+.Ed
+.Pp
+Then appending the expected YubiKey response as the second line into the same
+state file:
+.Bl -tag -offset ||| -width |
+.It Standalone mode - use the login type independently (i.e. ignoring existing passwords in the `passwd` file)
+.Bd -literal
+$ mkdir ~/.login_ykhmac
+$ echo -n 'myPassword' |/bin/sha256 |/usr/local/bin/ykchalresp -2 -i- |tr -d '\n' |/bin/sha512 >> /home/user/.login_ykhmac/12345678
+.Ed
+.It Combined with the existing local password (i.e. re-using the existing password in the `passwd` file)
+As root (to access master.passwd), encode the user's hashed password:
+.Bd -literal
+# echo -n $(awk 'BEGIN {FS=":"} /^testuser:/ {print $2}' /etc/master.passwd) |/bin/sha256 |/usr/local/bin/ykchalresp -2 -i- |tr -d '\n' |/bin/sha512 >> /home/user/.login_ykhmac/12345678
+.Ed
 .El
 .Sh EXAMPLES
 .Bl -tag -width |
@@ -109,12 +156,28 @@ ykhmac:\e
 	:x-ykhmac-state_dir=/var/db/login_ykhmac:\e
 	:tc=default:
 .Ed
-.El
 .Pp
 In this case the state file(s) (named after the YubiKey serial number(s)) must
-be in the specified state directory, under subdirectories for each username,
+be in the specified state directory, under sub directories for each username,
 e.g.:
 .Ql /var/db/login_ykhmac/user/12345678
+.Bd -literal
+ykhmac:\e
+	:auth=ykhmac:\e
+	:x-ykhmac-standalone:\e
+	:tc=default:
+.Ed
+.Pp
+In this case per-user state directories are used (e.g
+.Ql /home/user/.login_ykhmac/12345678
+) because there's no state directory override, and standalone mode is turned
+on, which means
+.Nm
+won't use the user's password hash from the
+.Ql passwd
+file, it'll use a newly specified password encoded and hashed in the state file.
+This will be separate from the user's local password.
+.El
 .Sh SEE ALSO
 .Xr login 1 ,
 .Xr su 1 ,
@@ -127,3 +190,8 @@ was written by
 .Pp
 Source, information, bugs:
 https://github.com/levaidaniel/login_ykhmac
+.Sh CAVEATS
+When in combined mode (e.g. using the local password hash of the user), the
+state file needs to be updated after a password change (e.g. with
+.Xr passwd 1
+).
