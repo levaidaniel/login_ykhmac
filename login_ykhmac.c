@@ -116,19 +116,15 @@ main(int argc, char *argv[])
 				mode = MODE_RESPONSE;
 			} else {
 				syslog(LOG_ERR, "%s: invalid service", optarg);
-
-				closelog();
-				exit(AUTH_FAILED);
+				goto fail;
 			}
 			break;
 		case 'd':
 			back = stdout;
 			break;
 		default:
-			syslog(LOG_ERR, "usage error1");
-
-			closelog();
-			exit(AUTH_FAILED);
+			syslog(LOG_ERR, "Unknown parameter");
+			goto fail;
 		}
 	}
 
@@ -140,17 +136,13 @@ main(int argc, char *argv[])
 			username = argv[optind];
 			break;
 		default:
-			syslog(LOG_ERR, "usage error2");
-
-			closelog();
-			exit(AUTH_FAILED);
+			syslog(LOG_ERR, "Too many parmeters");
+			goto fail;
 	}
 
 	if (back == NULL && (back = fdopen(3, "r+")) == NULL) {
 		syslog(LOG_ERR, "reopening back channel: %m");
-
-		closelog();
-		exit(AUTH_FAILED);
+		goto fail;
 	}
 
 	switch (mode) {
@@ -160,15 +152,13 @@ main(int argc, char *argv[])
 
 			if ((password = readpassphrase("Password:", password_static, sizeof(password_static), rpp_flags)) == NULL) {
 				syslog(LOG_ERR, "Unable to read passphrase: %m");
-
-				closelog();
-				exit(AUTH_FAILED);
+				goto fail;
 			}
 
 			break;
 		case MODE_CHALLENGE:
 			fprintf(back, BI_SILENT "\n");
-			exit(EXIT_SUCCESS);
+			exit(AUTH_OK);
 			break;
 		case MODE_RESPONSE:
 			mode = 0;
@@ -180,18 +170,15 @@ main(int argc, char *argv[])
 			}
 
 			if (mode < 2) {
-				syslog(LOG_ERR, "user %s: protocol error "
-				    "on back channel", username);
-				exit(AUTH_FAILED);
+				syslog(LOG_ERR, "user %s: protocol error on back channel", username);
+				goto fail;
 			}
 
 
 			break;
 		default:
 			syslog(LOG_ERR, "Unsupported authentication mode");
-
-			closelog();
-			exit(AUTH_FAILED);
+			goto fail;
 			break;
 	}
 
@@ -199,9 +186,7 @@ main(int argc, char *argv[])
 	lc = login_getclass(class);
 	if (!lc) {
 		syslog(LOG_ERR, "unknown class: %s", class);
-
-		closelog();
-		exit(AUTH_FAILED);
+		goto fail;
 	}
 	cfg_state_dir = login_getcapstr(lc, CAP_STATE_DIR, NULL, NULL);
 	cfg_standalone = login_getcapbool(lc, CAP_STANDALONE, 0);
@@ -211,30 +196,22 @@ main(int argc, char *argv[])
 		if (strlen(cfg_state_dir) <= PATH_MAX) {
 			if (snprintf(state_file_dir, sizeof(state_file_dir), "%s/%s", cfg_state_dir, username) < 0) {
 				syslog(LOG_ERR, "Error while setting up global state directory: %m");
-
-				closelog();
-				exit(AUTH_FAILED);
+				goto fail;
 			}
 		} else {
 			syslog(LOG_ERR, "Invalid global state directory: '%s'", state_file_dir);
-
-			closelog();
-			exit(AUTH_FAILED);
+			goto fail;
 		}
 	} else {
 		pw = getpwnam(username);
 		if (!pw) {
 			syslog(LOG_ERR, "Could not find '%s' in password database: %m", username);
-
-			closelog();
-			exit(AUTH_FAILED);
+			goto fail;
 		}
 
 		if (snprintf(state_file_dir, sizeof(state_file_dir), "%s/%s", pw->pw_dir, STATE_DIR_USER_HOME) < 0) {
 			syslog(LOG_ERR, "Error while setting up per-user state directory: %m");
-
-			closelog();
-			exit(AUTH_FAILED);
+			goto fail;
 		}
 	}
 
@@ -247,7 +224,7 @@ main(int argc, char *argv[])
 
 		if (!password_hash) {
 			syslog(LOG_ERR, "Could not find '%s' in password database: %m", username);
-			exit(AUTH_FAILED);
+			goto fail;
 		}
 
 		if (crypt_checkpass(password, password_hash) == 0) {
@@ -255,7 +232,7 @@ main(int argc, char *argv[])
 			password = password_hash;
 		} else {
 			syslog(LOG_ERR, "Invalid password");
-			exit(AUTH_FAILED);
+			goto fail;
 		}
 	}
 
@@ -265,11 +242,11 @@ main(int argc, char *argv[])
 
 		closelog();
 		exit(AUTH_OK);
-	} else {
-		fprintf(back, BI_REJECT "\n");
-		syslog(LOG_NOTICE, "Authentication FAIL for '%s'", username);
 	}
 
+fail:
 	closelog();
+	fprintf(back, BI_REJECT "\n");
+	syslog(LOG_NOTICE, "Authentication FAIL for '%s'", username);
 	exit(AUTH_FAILED);
 } /* main() */
