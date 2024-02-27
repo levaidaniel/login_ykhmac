@@ -24,7 +24,7 @@ beforeinstall:
 		${DESTDIR}${BINDIR}
 
 afterinstall:
-	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m ${DIRMODE} \
+	${INSTALL} -c -s -o ${BINOWN} -g ${BINGRP} -m ${DIRMODE} \
 		${PROG} ${DESTDIR}${BINDIR_BASE}/${PROG_BASE}
 
 .include <bsd.prog.mk>
