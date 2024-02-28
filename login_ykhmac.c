@@ -136,7 +136,7 @@ main(int argc, char *argv[])
 			username = argv[optind];
 			break;
 		default:
-			syslog(LOG_ERR, "Too many parmeters");
+			syslog(LOG_ERR, "Too many parameters");
 			goto fail;
 	}
 
