@@ -21,15 +21,15 @@ See YubiKey documentation on how to set this up.
 ### Per-user state directory (defaults to `$HOME/.login_ykhmac/<serial>`)
 ```
 ykhmac:\
-    :auth=ykhmac:\
+    :auth=-ykhmac:\
     :tc=default:
 ```
 ### Global state directory
 ```
 ykhmac:\
-    :auth=ykhmac:\
-    :tc=default:
+    :auth=-ykhmac:\
     :x-ykhmac-state_dir=/var/db/login_ykhmac:\
+    :tc=default:
 ```
 Or any other directory you wish to specify. This must contain sub directories named as usernames that in turn contain the state file(s) (i.e. named as the serial number(s)).
 
@@ -50,7 +50,7 @@ $ echo 1 > /var/db/login_ykhmac/user/12345678
 Add the standalone capability option to the authentication class in `login.conf`:
 ```
 ykhmac:\
-    :auth=ykhmac:\
+    :auth=-ykhmac:\
     :x-ykhmac-standalone:\
     :tc=default:
 ```
@@ -63,5 +63,5 @@ $ echo -n 'myPassword' |/bin/sha256 |/usr/local/bin/ykchalresp -2 -i- |tr -d '\n
 Same idea as above - whichever state directory is being used (per-user or global) -, using the existing password hash for the user, append the hash to a state file named after the corresponding serial number of the YubiKey being used.
 As root (to access master.passwd), encode the user's hashed password:
 ```
-# echo -n $(awk 'BEGIN {FS=":"} /^testuser:/ {print $2}' /etc/master.passwd) |/bin/sha256 |/usr/local/bin/ykchalresp -2 -i- |tr -d '\n' |/bin/sha512 >> /home/user/.login_ykhmac/12345678
+# echo -n $(awk 'BEGIN {FS=":"} /^user:/ {print $2}' /etc/master.passwd) |/bin/sha256 |/usr/local/bin/ykchalresp -2 -i- |tr -d '\n' |/bin/sha512 >> /home/user/.login_ykhmac/12345678
 ```
