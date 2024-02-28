@@ -245,8 +245,10 @@ main(int argc, char *argv[])
 	}
 
 fail:
-	closelog();
-	fprintf(back, BI_REJECT "\n");
 	syslog(LOG_NOTICE, "Authentication FAIL for '%s'", username);
+	closelog();
+
+	if (back)
+		fprintf(back, BI_REJECT "\n");
 	exit(AUTH_FAILED);
 } /* main() */
