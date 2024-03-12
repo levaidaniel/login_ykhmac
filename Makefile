@@ -1,7 +1,7 @@
 LOCALBASE ?=	/usr/local
 
 BINGRP =	auth
-BINMODE =	550
+BINMODE =	555
 BINDIR =	${LOCALBASE}/libexec/auth
 BINDIR_BASE =	/usr/libexec/auth
 PROG =		login_ykhmac
@@ -24,7 +24,7 @@ beforeinstall:
 		${DESTDIR}${BINDIR}
 
 afterinstall:
-	${INSTALL} -c -s -o ${BINOWN} -g ${BINGRP} -m ${DIRMODE} \
+	${INSTALL} -c -s -o ${BINOWN} -g ${BINGRP} -m ${BINMODE} \
 		${PROG} ${DESTDIR}${BINDIR_BASE}/${PROG_BASE}
 
 .include <bsd.prog.mk>
