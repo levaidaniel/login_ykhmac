@@ -2,9 +2,9 @@
 OpenBSD authentication type using YubiKey HMAC-SHA1 challenge-response mode.
 
 It uses a state file to use when authenticating the users. The state file must consist of three lines:
-1.: YubiKey slot to use (1 or 2)
-2.: salt
-3.: SHA2-512 hash of the salt and the YubiKey response.
+1. YubiKey slot to use (1 or 2)
+2. salt
+3. SHA2-512 hash of the salt and the YubiKey response.
 # Login Class options
 * x-ykhmac-state\_dir: string, optional
 
