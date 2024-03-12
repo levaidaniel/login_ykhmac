@@ -17,7 +17,7 @@
 .\"ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 .\"(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 .\"SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-.Dd $Mdocdate: February 26 2024 $
+.Dd $Mdocdate: March 12 2024 $
 .Dt LOGIN_YKHMAC 8
 .Os
 .Sh NAME
@@ -75,8 +75,8 @@ argument is accepted for consistency with the other login scripts but
 is not used.
 .Pp
 .Nm
-uses state files containing two lines: the YubiKey slot number and the expected
-encoded and hashed response for a challenge.
+uses state files containing three lines: the YubiKey slot number, a salt, and
+the expected encoded and hashed response for a challenge.
 A state file - named after its serial number - corresponds to a specific
 YubiKey.
 State files are searched either under the
@@ -140,15 +140,15 @@ or
 $ echo 1 > /var/db/login_ykhmac/user/12345678
 .Ed
 .Pp
-Then appending the expected YubiKey response as the second line into the same
-state file:
+Then appending a salt and the expected YubiKey response as the second and third
+line into the same state file:
 .Bl -tag -offset ||| -width |
 .It Standalone mode - use the login type independently
 .Po i.e. ignoring existing passwords in the `passwd` file
 .Pc
 .Bd -literal
 $ mkdir ~/.login_ykhmac
-$ echo -n 'myPassword' |/bin/sha256 |/usr/local/bin/ykchalresp -2 -i- |tr -d '\n' |/bin/sha512 >> /home/user/.login_ykhmac/12345678
+$ echo -n $(echo -n 'myPassword' |/bin/sha256 |/usr/local/bin/ykchalresp -2 -i- |tr -d '\n')$(openssl rand -hex 32 |tee -a /home/user/.login_ykhmac/12345678 ) |/bin/sha512 >> /home/user/.login_ykhmac/12345678
 .Ed
 .It Combined with the existing local password
 .Po i.e. re-using the existing password in the `passwd` file
@@ -158,7 +158,7 @@ As root
 .Pc ,
 encode the user's hashed password:
 .Bd -literal
-# echo -n $(awk 'BEGIN {FS=":"} /^testuser:/ {print $2}' /etc/master.passwd) |/bin/sha256 |/usr/local/bin/ykchalresp -2 -i- |tr -d '\n' |/bin/sha512 >> /home/user/.login_ykhmac/12345678
+# echo -n $(awk 'BEGIN {FS=":"} /^user:/ {print $2}' /etc/master.passwd |tr -d '\n' |/bin/sha256 |/usr/local/bin/ykchalresp -2 -i- |tr -d '\n')$(openssl rand -hex 32 |tee -a /home/user/.login_ykhmac/12345678 ) |/bin/sha512 >> /home/user/.login_ykhmac/12345678
 .Ed
 .El
 .Sh EXAMPLES

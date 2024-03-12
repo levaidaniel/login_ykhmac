@@ -37,7 +37,9 @@
 
 #define YKHMAC_DEV_MAX		10
 
-#define STATE_FILE_DATA_SIZE	130
+#define STATE_FILE_DATA_SIZE	195
+
+#define SALT_LENGTH		64
 
 
 char ykhmac_check(const char *, const char *,

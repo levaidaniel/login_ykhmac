@@ -1,5 +1,10 @@
 # login\_ykhmac
-OpenBSD authentication type using YubiKey HMAC-SHA1 challenge-response mode
+OpenBSD authentication type using YubiKey HMAC-SHA1 challenge-response mode.
+
+It uses a state file to use when authenticating the users. The state file must consist of three lines:
+1.: YubiKey slot to use (1 or 2)
+2.: salt
+3.: SHA2-512 hash of the salt and the YubiKey response.
 # Login Class options
 * x-ykhmac-state\_dir: string, optional
 
@@ -54,14 +59,14 @@ ykhmac:\
     :x-ykhmac-standalone:\
     :tc=default:
 ```
-Encode a new password directly and store it in the state file corresponding to the YubiKey being used. Make sure to apply strict file permissions on the directory and file.
+Encode a new password directly and store it with the salt in the state file corresponding to the YubiKey being used. Make sure to apply strict file permissions on the directory and file.
 ```
 $ mkdir ~/.login_ykhmac
-$ echo -n 'myPassword' |/bin/sha256 |/usr/local/bin/ykchalresp -2 -i- |tr -d '\n' |/bin/sha512 >> /home/user/.login_ykhmac/12345678
+$ echo -n $(echo -n 'myPassword' |/bin/sha256 |/usr/local/bin/ykchalresp -2 -i- |tr -d '\n')$(openssl rand -hex 32 |tee -a /home/user/.login_ykhmac/12345678 ) |/bin/sha512 >> /home/user/.login_ykhmac/12345678
 ```
 ### Combined with the existing local password (i.e. re-using the existing password in the `passwd` file)
-Same idea as above - whichever state directory is being used (per-user or global) -, using the existing password hash for the user, append the hash to a state file named after the corresponding serial number of the YubiKey being used.
+Same idea as above - whichever state directory is being used (per-user or global) -, using the existing password hash for the user, append the salt and hash to a state file named after the corresponding serial number of the YubiKey being used.
 As root (to access master.passwd), encode the user's hashed password:
 ```
-# echo -n $(awk 'BEGIN {FS=":"} /^user:/ {print $2}' /etc/master.passwd) |/bin/sha256 |/usr/local/bin/ykchalresp -2 -i- |tr -d '\n' |/bin/sha512 >> /home/user/.login_ykhmac/12345678
+# echo -n $(awk 'BEGIN {FS=":"} /^user:/ {print $2}' /etc/master.passwd |tr -d '\n' |/bin/sha256 |/usr/local/bin/ykchalresp -2 -i- |tr -d '\n')$(openssl rand -hex 32 |tee -a /home/user/.login_ykhmac/12345678 ) |/bin/sha512 >> /home/user/.login_ykhmac/12345678
 ```

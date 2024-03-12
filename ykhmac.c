@@ -95,10 +95,11 @@ ykhmac_check(const char *username, const char *password,
 
 	char		challenge[SHA256_DIGEST_STRING_LENGTH];	/* includes +1 for NUL-termination */
 
+	SHA2_CTX	sha_ctx;
 	unsigned char	response[SHA1_MAX_BLOCK_SIZE];
 	char		response_hex[SHA1_MAX_BLOCK_SIZE * 2 + 1];
 	char		response_hash[SHA512_DIGEST_STRING_LENGTH];	/* includes +1 for NUL-termination */
-	char		*response_hash_db = NULL;
+	char		*response_hash_db = NULL, *salt_db = NULL;
 
 	int		pos = 0;
 	ssize_t		ret = -1;
@@ -211,7 +212,10 @@ ykhmac_check(const char *username, const char *password,
 						syslog(LOG_ERR, "Could not convert slot number: %s", errstr);
 						goto exit;
 					}
-				/* 2nd line is expected response */
+				/* 2nd line is salt */
+				} else if (salt_db == NULL) {
+					salt_db = strndup(state_file_line, SALT_LENGTH);
+				/* 3rd line is expected response */
 				} else if (response_hash_db == NULL) {
 					response_hash_db = strndup(state_file_line, sizeof(response_hash));
 				}
@@ -249,7 +253,11 @@ ykhmac_check(const char *username, const char *password,
 			explicit_bzero(response, sizeof(response));
 
 			explicit_bzero(response_hash, sizeof(response_hash));
-			SHA512Data((const unsigned char *)response_hex, strnlen(response_hex, YKHMAC_RESPONSE_MAXLEN * 2), response_hash);
+			SHA512Init(&sha_ctx);
+			SHA512Update(&sha_ctx, (const unsigned char *)response_hex, strnlen(response_hex, YKHMAC_RESPONSE_MAXLEN * 2));
+			SHA512Update(&sha_ctx, (const unsigned char *)salt_db, SALT_LENGTH);
+			SHA512End(&sha_ctx, response_hash);
+			explicit_bzero(salt_db, SALT_LENGTH);
 			explicit_bzero(response_hex, sizeof(response_hex));
 
 			if (memcmp(response_hash, response_hash_db, sizeof(response_hash)) == 0)
@@ -273,6 +281,7 @@ exit:
 	explicit_bzero(response, sizeof(response));
 	explicit_bzero(response_hex, sizeof(response_hex));
 	explicit_bzero(response_hash, sizeof(response_hash));
+	explicit_bzero(salt_db, sizeof(salt_db));
 	free(response_hash_db); response_hash_db = NULL;
 	if (response_hash_db)
 		explicit_bzero(response_hash_db, sizeof(response_hash));
