@@ -72,6 +72,8 @@
 int
 main(int argc, char *argv[])
 {
+	char		fail = 0;
+
 	struct		rlimit rl;
 	login_cap_t	*lc = NULL;
 
@@ -116,7 +118,7 @@ main(int argc, char *argv[])
 				mode = MODE_RESPONSE;
 			} else {
 				syslog(LOG_ERR, "%s: invalid service", optarg);
-				goto fail;
+				fail++;
 			}
 			break;
 		case 'd':
@@ -124,7 +126,7 @@ main(int argc, char *argv[])
 			break;
 		default:
 			syslog(LOG_ERR, "Unknown parameter");
-			goto fail;
+			fail++;
 		}
 	}
 
@@ -138,6 +140,11 @@ main(int argc, char *argv[])
 		default:
 			syslog(LOG_ERR, "Too many parameters");
 			goto fail;
+	}
+
+	/* bail if there was an error previously */
+	if (fail) {
+		goto fail;
 	}
 
 	if (back == NULL && (back = fdopen(3, "r+")) == NULL) {
@@ -245,7 +252,7 @@ main(int argc, char *argv[])
 	}
 
 fail:
-	syslog(LOG_NOTICE, "Authentication FAIL for '%s'", username);
+	syslog(LOG_NOTICE, "Authentication FAIL for '%s'", username == NULL ? "<unknown>" : username);
 	closelog();
 
 	if (back)
