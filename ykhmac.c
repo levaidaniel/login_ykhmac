@@ -281,10 +281,14 @@ exit:
 	explicit_bzero(response, sizeof(response));
 	explicit_bzero(response_hex, sizeof(response_hex));
 	explicit_bzero(response_hash, sizeof(response_hash));
-	explicit_bzero(salt_db, sizeof(salt_db));
-	free(response_hash_db); response_hash_db = NULL;
+
+	if (salt_db)
+		explicit_bzero(salt_db, SALT_LENGTH);
+	free(salt_db); salt_db = NULL;
+
 	if (response_hash_db)
 		explicit_bzero(response_hash_db, sizeof(response_hash));
+	free(response_hash_db); response_hash_db = NULL;
 
 	if (success) {
 		return(1);
